@@ -108,14 +108,17 @@ ZK eventfn;
 ZV seteventfn(K x){r1(x);eventfn=x;}
 //typedef int (zloop_fn) (zloop_t *loop, zmq_pollitem_t *item, void *arg);
 ZI event_loop_fn(zloop_t*loop, zmq_pollitem_t*item, V*args){
-    K w=ktn(KJ,3); kK(w)[0]=ptr(loop); kK(w)[1]=ptr(item); kK(w)[2]=ptr(args);
-    K x=k(0, ".", eventfn, w, (K)0);
-    if(xt==-128){O("k() error: %s\n", xs);}
-    R xi;}
+  // K w=ktn(KJ,3); kK(w)[0]=ptr(loop); kK(w)[1]=ptr(item); kK(w)[2]=ptr(args);
+  K w=knk(3, ptr(loop), ptr(item), ptr(args));
+  K x=k(0, ".", eventfn, w, (K)0);
+  if(xt==-128){O("k() error: %s\n", xs);}
+  R xi;}
 //    zloop_poller (zloop_t *self, zmq_pollitem_t *item, zloop_fn handler, void *arg);
 Z K4(zlooppoller){PC(x); TC(y,0); TC(z,-KS);
     ZTK(zloop_t, loop);
     seteventfn(z);
+    // {*socket, fd, events, revents} (fd is file description. It will be ignored when socket is specified)
+    // http://api.zeromq.org/2-1:zmq-poll
     zmq_pollitem_t item={VSK(yK[0]), yK[1]->i, yK[2]->h,yK[3]->h};
     R ki(zloop_poller(loop, &item, event_loop_fn, z4));}
 Z K2(zlooppollerend){PC(x); PC(y); zloop_poller_end(VSK(x), VSK(y)); R(K)0;}
@@ -128,13 +131,16 @@ ZV settimerfn(K x){r1(x);timerfn=x;}
 //typedef int (zloop_fn) (zloop_t *loop, zmq_pollitem_t *item, void *arg);
 ZI timer_loop_fn(zloop_t*loop, zmq_pollitem_t*item, V*args){
     silence(item); // for the compiler
-    K w=ktn(KJ,3); kK(w)[0]=ptr(loop); kK(w)[1]=kj(0); /* item is null for timer */; kK(w)[2]=ptr(args);
+    // K w=ktn(KJ,3); kK(w)[0]=ptr(loop); kK(w)[1]=kj(0); /* item is null for timer */; kK(w)[2]=ptr(args);
+    // ptr(args) is useless in Q, except for ending a timer loop
+    K w=knk(3,ptr(loop),kj(0), ptr(args));
     K x=k(0, ".", timerfn, w, (K)0);
     if(xt==-128){O("k() error: %s\n", xs);}
     R xi;}
+
 // zloop_timer (zloop_t *self, size_t delay, size_t times, zloop_fn handler, void *arg)
 Z K5(zlooptimer){PC(x); TC2(y,-KI,-KJ); TC2(z,-KI,-KJ); TC(z4,-KS);
-    ZTK(zloop_t,loop); settimerfn(z4); R ki(zloop_timer(loop, yj, zj, timer_loop_fn, z5));}
+  ZTK(zloop_t,loop); settimerfn(z4); R ki(zloop_timer(loop, yj, zj, timer_loop_fn, z5));}
 Z K2(zlooptimerend){PC(x); PC(y); zloop_timer_end(VSK(x), VSK(y)); R(K)0;}
 Z K2(zloopsetverbose){PC(x); TC(y,-KB); ZTK(zloop_t,loop); zloop_set_verbose(loop, y->g); R(K)0;}
 Z K1(zloopstart){PC(x); ZTK(zloop_t,loop); R ki(zloop_start(loop));}
@@ -367,10 +373,10 @@ Z czmqzpi zframeapi[]={
 Z czmqzpi zloopapi[]={
     {"zloop", "new", zloopnew, 0, "creates a new zloop."},
     {"zloop", "destroy", zloopdestroy, 1, "destroys the zloop x."},
-    {"zloop", "poller", zlooppoller, 4, "`z[z4] runs when the pollitem y is ready in the zloop x; 0i OK, -1i not."},
+    {"zloop", "poller", zlooppoller, 4, "`z[x;y;z4] runs when the pollitem y (socket, 0, events, revents) is ready in the zloop x; 0i OK, -1i not."},
     {"zloop", "poller_end", zlooppollerend, 2, "cancels the pollitem y from the zloop x."},
     // zloop_timer (zloop_t *self, size_t delay, size_t times, zloop_fn handler, void *arg)
-    {"zloop", "timer", zlooptimer, 5, "`z4[z5] runs with the delay y, z-times in the zloop x; 0i OK, -1i not."},
+    {"zloop", "timer", zlooptimer, 5, "`z4[x;y;z5] runs with the delay y, z-times in the zloop x; 0i OK, -1i not."},
     {"zloop", "timer_end", zlooptimerend, 2, "cancels all timers for the zloop x and y."},
     {"zloop", "set_verbose", zloopsetverbose, 2, "verbose tracing of the zloop x to y, 1b or 0b."},
     {"zloop", "start", zloopstart, 1, "starts zloop x; returns 0i if interrupted, -1i if cancelled by a handler."},
