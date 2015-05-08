@@ -100,6 +100,8 @@ Z K1(zloopgetpollitem){
   zmq_pollitem_t *item=(zmq_pollitem_t*)VSK(x);
   R knk(4, ptr(item->socket), ki(item->fd), ki(item->events), ki(item->revents));
   }
+Z K1(zloopgetarg){R r1((K)VSK(x));} // need to increment the reference count here!!!
+
 // three-tier implementation of zloop:
 // - user-visible API zloop_poller and zloop_timer take a q worker function named  by a -11h.
 // - q worker function is set in a placeholder (call from q itself is singlethreaded).
@@ -109,7 +111,7 @@ Z K1(zloopgetpollitem){
 // q) zloop.poller[loop; (...); `eventfn; args] / starts an event loop
 // q) ...
 
-// The problem of this implementation is, the poller will only be able to be registered with one handler 
+// The problem of this implementation is, the poller will only be able to be registered with one handler. Because the second time zloop_function is called, eventfn will be overwritten
 
 ZK eventfn;
 ZV seteventfn(K x){r1(x);eventfn=x;}
@@ -127,6 +129,8 @@ Z K4(zlooppoller){PC(x); TC(y,0); TC(z,-KS);
     // {*socket, fd, events, revents} (fd is file description. It will be ignored when socket is specified)
     // http://api.zeromq.org/2-1:zmq-poll
     zmq_pollitem_t item={VSK(yK[0]), yK[1]->i, yK[2]->h,yK[3]->h};
+    r1(z4); // In case there is no reference to z4 in Q
+    r1(z4); // Reference count will decrease by 1 after zloop_poller returns to Q
     R ki(zloop_poller(loop, &item, event_loop_fn, z4));}
 Z K2(zlooppollerend){PC(x); PC(y); zloop_poller_end(VSK(x), VSK(y)); R(K)0;}
 // q) timerfn:{...}
@@ -381,6 +385,7 @@ Z czmqzpi zloopapi[]={
     {"zloop", "new", zloopnew, 0, "creates a new zloop."},
     {"zloop", "destroy", zloopdestroy, 1, "destroys the zloop x."},
     {"zloop", "get_pollitem", zloopgetpollitem, 1, "Used in zloop handler for getting the content of zmq_pollitem_t (as a 4-item general list)"},
+    {"zloop", "get_arg", zloopgetarg, 1, "Used in zloop handler for getting the content of arg"},
     {"zloop", "poller", zlooppoller, 4, "`z[x;y;z4] runs when the pollitem y (socket, 0, events, revents) is ready in the zloop x; 0i OK, -1i not."},
     {"zloop", "poller_end", zlooppollerend, 2, "cancels the pollitem y from the zloop x."},
     // zloop_timer (zloop_t *self, size_t delay, size_t times, zloop_fn handler, void *arg)
