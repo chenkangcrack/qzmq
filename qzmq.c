@@ -86,7 +86,7 @@ Z K1(zframesize){PC(x); R kj(zframe_size(VSK(x)));}
 Z K0(zframedata){R krr("nyi");}// zframe_data() is unsafe, too low-level for q.
 Z K1(zframedup){PC(x); R ptr(zframe_dup(VSK(x)));}
 Z K0(zframestrhex){R krr("nyi");}
-Z K1(zframestrdup){PC(x); I n=zframe_size(VSK(x)); K y=ktn(KG,n); memcpy(yG, zframe_data(VSK(x)), n); R y;}
+Z K1(zframestrdup){PC(x); I n=zframe_size(VSK(x)); K y=ktn(KC,n); memcpy(yG, zframe_data(VSK(x)), n); R y;}
 Z K2(zframestreq){PC(x); TC2(y,KC,KG); CSTR(y); K z=kb(zframe_streq(VSK(x), s)); R z;}
 Z K0(zframezerocopy){R krr("nyi");}
 Z K1(zframemore){PC(x); R ki(zframe_more(VSK(x)));}
@@ -97,10 +97,11 @@ Z K2(zframereset){zframe_reset(VSK(x), yG, N(y)); R(K)0;}
 Z K0(zloopnew){zloop_t*l=zloop_new(); P(l, ptr(l)); R(K)0;}
 Z K1(zloopdestroy){PC(x); ZTK(zloop_t,l); zloop_destroy(&l); R(K)0;}
 Z K1(zloopgetpollitem){
+  if(!x) R (K)0;
   zmq_pollitem_t *item=(zmq_pollitem_t*)VSK(x);
   R knk(4, ptr(item->socket), ki(item->fd), ki(item->events), ki(item->revents));
   }
-Z K1(zloopgetarg){R r1((K)VSK(x));} // need to increment the reference count here!!!
+Z K1(zloopgetarg){if(x){R r1((K)VSK(x));} R (K)0;} // need to increment the reference count here!!!
 
 // three-tier implementation of zloop:
 // - user-visible API zloop_poller and zloop_timer take a q worker function named  by a -11h.
@@ -111,7 +112,7 @@ Z K1(zloopgetarg){R r1((K)VSK(x));} // need to increment the reference count her
 // q) zloop.poller[loop; (...); `eventfn; args] / starts an event loop
 // q) ...
 
-// The problem of this implementation is, the poller will only be able to be registered with one handler. Because the second time zloop_function is called, eventfn will be overwritten
+// The problem of this implementation is, the poller will only be able to be registered with one handler. Because the second time zloop_function is called, eventfn will be overwritten 
 
 ZK eventfn;
 ZV seteventfn(K x){r1(x);eventfn=x;}
